@@ -1,4 +1,6 @@
-from sklearn.feature_extraction.text import TfidfVectorizer
+rom sklearn.feature_extraction.text import TfidfVectorizer
+from sentence_transformers import SentenceTransformer
+import numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 mesajlar = [
@@ -523,21 +525,51 @@ cevaplar = {
         "I can help you with Python basics, functions, loops, lists, dictionaries and libraries."
 }
 
-model = Pipeline([
-    ("metnisayiyadonustur",TfidfVectorizer()),
-    ("lojistikregresyon",LogisticRegression(random_state=37,))
-])
+# model = Pipeline([
+#     ("metnisayiyadonustur",TfidfVectorizer(ngram_range=(1,2))),
+#     ("lojistikregresyon",LogisticRegression(random_state=37,))
+# ])
+# model.fit(mesajlar, etiketler)
+
 #max_iter=1000 kaç tekrar edileceğini belirler. Eğer modelinizin eğitimi sırasında "ConvergenceWarning" hatası alıyorsak, bu değeri artıracağız.
 #random_state=37, modelin her çalıştırıldığında aynı sonuçları üretmesini sağlar. Bu, modelin tekrarlanabilirliğini artırır ve sonuçların tutarlılığını sağlar.
+
 print("How can I help you?( Type 'exit' to quit)")
-model.fit(mesajlar, etiketler)
+model = SentenceTransformer(
+    "sentence-transformers/paraphrase-MiniLM-L12-v2"
+)
+ornek_embeddingler = model.encode(
+    mesajlar,
+    normalize_embeddings=True
+)
+
 while True:
     kullaniciMesaji = input("You: ")
     if kullaniciMesaji.lower() == "exit":
         print("Remember to take care of yourself, you are unique!")
         break
-    tahmin = model.predict([kullaniciMesaji])
-    response = cevaplar.get(tahmin[0], "I'm sorry, I don't understand your question.")
-    print("ChaddBot:", response)
+    kullaniciEmbedding = model.encode(
+        kullaniciMesaji,
+        normalize_embeddings=True
+    )
+    benzerlikler = np.dot(
+        ornek_embeddingler,
+        kullaniciEmbedding
+    )
+    en_yakin_benzerlik_indexi = np.argmax(benzerlikler)
+    benzerlik = benzerlikler[en_yakin_benzerlik_indexi]
+    if benzerlik > 0.7:
+
+        etiket = etiketler[en_yakin_benzerlik_indexi]
+
+        print("Etiket:", etiket)
+        print("Bot:", cevaplar[etiket])
+    else:
+
+        print("Bot: I'm sorry, I don't understand your question.")
+
+    # tahmin = model.predict([kullaniciMesaji])
+    # response = cevaplar[etiketler]
+    # print("ChaddBot:", response)
 
 
